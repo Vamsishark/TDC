@@ -41,14 +41,5 @@ The code is compiled using the GCC compiler with the `-lpthread` flag to link th
 
 The program prints messages indicating the push and pop operations performed by each thread, along with the associated data.
 
-Example Output:
-
-Thread 123456789: Pushed 1 onto the stack  
-
-Thread 987654321: Pushed 2 onto the stack  
-
-Thread 123456789: Popped 2 from the stack  
-
-Thread 987654321: Popped 1 from the stack  
-
+<img src="./images/example_output.png" height="350" alt="Background graphics setting" />
 
