@@ -1,83 +1,151 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
+#include <pthread.h>
 
-#define PORT 12345
-#define MAX_NODES 10
-#define MAX_BUFFER_SIZE 1024
+#define MAX_SIZE 10
 
+// Node structure representing an element in the distributed queue
 struct Node {
-    char data[MAX_BUFFER_SIZE];
+    int data;
     struct Node* next;
 };
 
-struct Node* head = NULL;
+// Distributed Queue structure with a front and rear pointer
+struct DistributedQueue {
+    struct Node* front;
+    struct Node* rear;
+    pthread_mutex_t lock;
+};
 
-void appendToList(char* data) {
+// Initialize the distributed queue with NULL front and rear pointers
+void initDistributedQueue(struct DistributedQueue* queue) {
+    queue->front = NULL;
+    queue->rear = NULL;
+    pthread_mutex_init(&queue->lock, NULL);
+}
+
+// Enqueue an element into the distributed queue
+void enqueue(struct DistributedQueue* queue, int data) {
     struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
-    strcpy(newNode->data, data);
-    newNode->next = head;
-    head = newNode;
-}
+    newNode->data = data;
+    newNode->next = NULL;
 
-void printList() {
-    struct Node* current = head;
-    printf("List contents:\n");
-    while (current != NULL) {
-        printf("%s\n", current->data);
-        current = current->next;
+    // Lock the mutex before modifying the queue
+    pthread_mutex_lock(&queue->lock);
+
+    // If the queue is empty, update both front and rear pointers
+    if (queue->front == NULL) {
+        queue->front = newNode;
+        queue->rear = newNode;
+    } else {
+        // Otherwise, update the rear pointer
+        queue->rear->next = newNode;
+        queue->rear = newNode;
     }
+
+    // Print a message indicating the enqueue operation
+    printf("Enqueued %d into the distributed queue\n", data);
+
+    // Unlock the mutex after the operation is complete
+    pthread_mutex_unlock(&queue->lock);
 }
 
+// Dequeue an element from the distributed queue
+int dequeue(struct DistributedQueue* queue) {
+    // Lock the mutex before modifying the queue
+    pthread_mutex_lock(&queue->lock);
+
+    // Check if the queue is empty
+    if (queue->front == NULL) {
+        // Print a message indicating that the queue is empty
+        printf("Distributed Queue is empty\n");
+
+        // Unlock the mutex and return -1 to indicate an empty queue
+        pthread_mutex_unlock(&queue->lock);
+        return -1;
+    }
+
+    // Retrieve data from the front node and update pointers
+    int data = queue->front->data;
+    struct Node* temp = queue->front;
+
+    // If there is only one element in the queue, update both front and rear pointers to NULL
+    if (queue->front == queue->rear) {
+        queue->front = NULL;
+        queue->rear = NULL;
+    } else {
+        // Otherwise, update the front pointer
+        queue->front = queue->front->next;
+    }
+
+    // Free the memory of the dequeued node
+    free(temp);
+
+    // Print a message indicating the dequeue operation
+    printf("Dequeued %d from the distributed queue\n", data);
+
+    // Unlock the mutex after the operation is complete
+    pthread_mutex_unlock(&queue->lock);
+
+    // Return the dequeued data
+    return data;
+}
+
+// Structure to hold arguments for thread functions
+struct ThreadArgs {
+    struct DistributedQueue* queue;
+    int data;
+};
+
+// Thread function to enqueue elements into the distributed queue
+void* enqueueThread(void* arg) {
+    // Cast the argument to the ThreadArgs structure
+    struct ThreadArgs* args = (struct ThreadArgs*)arg;
+
+    // Call the enqueue function with the specified queue and data
+    enqueue(args->queue, args->data);
+
+    // Return NULL as required by the pthread_create function
+    return NULL;
+}
+
+// Thread function to dequeue elements from the distributed queue
+void* dequeueThread(void* arg) {
+    // Cast the argument to the ThreadArgs structure
+    struct ThreadArgs* args = (struct ThreadArgs*)arg;
+
+    // Call the dequeue function with the specified queue
+    dequeue(args->queue);
+
+    // Return NULL as required by the pthread_create function
+    return NULL;
+}
+
+// Main function
 int main() {
-    int serverSocket, clientSocket;
-    struct sockaddr_in serverAddr, clientAddr;
-    socklen_t addrSize = sizeof(struct sockaddr_in);
+    // Initialize the distributed queue
+    struct DistributedQueue queue;
+    initDistributedQueue(&queue);
 
-    // Initialize the list
-    head = NULL;
+    // Array to hold thread IDs
+    pthread_t threads[4];
 
-    // Create a socket
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket < 0) {
-        perror("Error in socket creation");
-        exit(1);
+    // Create threads to enqueue and dequeue concurrently
+    struct ThreadArgs enqueueArgs[2] = {{&queue, 1}, {&queue, 2}};
+    struct ThreadArgs dequeueArgs[2] = {{&queue, 1}, {&queue, 2}};
+
+    for (int i = 0; i < 2; i++) {
+        // Create threads for enqueuing
+        pthread_create(&threads[i], NULL, enqueueThread, (void*)&enqueueArgs[i]);
+        // Create threads for dequeuing
+        pthread_create(&threads[i + 2], NULL, dequeueThread, (void*)&dequeueArgs[i]);
     }
 
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(PORT);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-
-    // Bind the socket
-    if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("Error in binding");
-        exit(1);
+    // Wait for the threads to finish
+    for (int i = 0; i < 4; i++) {
+        pthread_join(threads[i], NULL);
     }
 
-    // Listen for connections
-    listen(serverSocket, MAX_NODES);
-    printf("Server listening on port %d...\n", PORT);
-
-    while (1) {
-        // Accept incoming connections
-        clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &addrSize);
-
-        // Receive data from the client
-        char data[MAX_BUFFER_SIZE];
-        recv(clientSocket, data, MAX_BUFFER_SIZE, 0);
-        printf("Received data: %s\n", data);
-
-        // Append received data to the distributed list
-        appendToList(data);
-
-        // Print the updated list
-        printList();
-
-        // Close the client socket
-        close(clientSocket);
-    }
-
+    // Return 0 to indicate successful program execution
     return 0;
 }
