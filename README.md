@@ -41,5 +41,5 @@ The code is compiled using the GCC compiler with the `-lpthread` flag to link th
 
 The program prints messages indicating the push and pop operations performed by each thread, along with the associated data.
 
-<img src="./images/example_output.png" height="150" width="50" alt="Background graphics setting" />
+<img src="./images/example_output.png" height="250" width="50" alt="Background graphics setting" />
 
