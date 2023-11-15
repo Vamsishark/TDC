@@ -43,8 +43,12 @@ The program prints messages indicating the push and pop operations performed by 
 
 Example Output:
 
-Thread 123456789: Pushed 1 onto the stack
-Thread 987654321: Pushed 2 onto the stack
-Thread 123456789: Popped 2 from the stack
-Thread 987654321: Popped 1 from the stack
+Thread 123456789: Pushed 1 onto the stack  
+
+Thread 987654321: Pushed 2 onto the stack  
+
+Thread 123456789: Popped 2 from the stack  
+
+Thread 987654321: Popped 1 from the stack  
+
 
