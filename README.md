@@ -26,17 +26,19 @@ The concurrent stack implementation includes functions to initialize the stack, 
 
 1. *Clone the repository:*
 
+Skip this step if you have already did it.
+
     bash
     git clone https://github.com/Vamsishark/TDC
     
 
-2. *Compile the code:*
+3. *Compile the code:*
 
     bash
     gcc -o concurrent_stack Cyberpunks_concurrent_data_structure.c -lpthread
     
 
-3. *Run the executable:*
+4. *Run the executable:*
 
     bash
     ./concurrent_stack
